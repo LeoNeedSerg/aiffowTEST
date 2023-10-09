@@ -1,3 +1,5 @@
+from airflow import DAG
+
 # We need to import the operators used in our tasks
 from airflow.operators.python import PythonOperator
 # We then import the days_ago function
