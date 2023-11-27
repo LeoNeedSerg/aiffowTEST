@@ -6,7 +6,8 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from datetime import timedelta
 
-
+import sklearn
+import pandas as pd
 
 # def my_python_script():
 #     # Your Python script goes here
@@ -30,12 +31,18 @@ def get_data_train():  #https://scikit-learn.org/stable/model_persistence.html
     # Your Python script goes here
     from sklearn import svm
     from sklearn import datasets
+    from joblib import dump, load
     clf = svm.SVC()
     iris = datasets.load_iris()
     X, y = iris.data, iris.target
     clf.fit(X, y)
-    from sklearn.externals import joblib #https://joblib.readthedocs.io/en/latest/generated/joblib.dump.html
-    joblib.dump(clf, '/opt/airflow/files/filename.pkl')  #написать куда выгружать
+    dump(clf, '/opt/airflow/files/filename.joblib') 
+    # iris = datasets.load_iris()
+    # df = pd.DataFrame.from_dict(iris, orient='index')
+    # df.to_csv('/opt/airflow/files/iris.csv')
+    
+    # from sklearn.externals import joblib #https://joblib.readthedocs.io/en/latest/generated/joblib.dump.html
+    # joblib.dump(clf, '/opt/airflow/files/filename.pkl')  #написать куда выгружать
     
     # from joblib import dump, load   #https://joblib.readthedocs.io/en/latest/auto_examples/compressors_comparison.html#sphx-glr-auto-examples-compressors-comparison-py
     # pickle_file = '/opt/airflow/files/pickle_data.joblib'
@@ -48,22 +55,24 @@ def load_test():
     # with open(pickle_file, 'rb') as f:
     #     load(f)
     
-    from sklearn.externals import joblib
     from sklearn import svm
     from sklearn import datasets
-    clf2 = joblib.load('/opt/airflow/files/filename.pkl')
+    from joblib import dump, load
+    clf2 = load('/opt/airflow/files/filename.joblib')
     iris = datasets.load_iris()
     X, y = iris.data, iris.target
     predict = clf2.predict(X[0:1])
-    f = open("/opt/airflow/files/predict.txt", "a")
-    f.write(predict)
-    f.close()
+    df = pd.DataFrame(predict)
+    df.to_csv('/opt/airflow/files/predict.csv', index=False)
+    # f = open("/opt/airflow/files/predict.csv", "a")
+    # f.write(predict)
+    # f.close()
     
     
 
 default_args = {
     'owner': 'airflow',
-    'start_date': days_ago(5),
+    'start_date': days_ago(1),
     'email': ['airflow@my_first_dag.com'],
     'email_on_failure': False,
     'email_on_retry': False,
