@@ -8,6 +8,7 @@ from datetime import timedelta
 
 import sklearn
 import pandas as pd
+import numpy as np
 
 # def my_python_script():
 #     # Your Python script goes here
@@ -26,16 +27,33 @@ import pandas as pd
 #     python_callable=my_python_script,
 #     dag=my_first_dag1,
 # )
+def get_data():  #https://scikit-learn.org/stable/model_persistence.html
+    # Your Python script goes here
+    from sklearn import datasets
+    from sklearn.model_selection import train_test_split
+    iris = datasets.load_iris()
+    X = iris.data
+    y = iris.target
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    df_train = pd.DataFrame(X_train, columns=['sepal length (cm)','sepal width (cm)','petal length (cm)','petal width (cm))'])
+    df_train['target'] = y_train
+    df_test = pd.DataFrame(X_test, columns=['sepal length (cm)','sepal width (cm)','petal length (cm)','petal width (cm))'])
+    df_test['target'] = y_test
+    df_train.to_csv('/opt/airflow/files/df_train.csv', index=False)
+    df_test.to_csv('/opt/airflow/files/df_test.csv', index=False)
+    
+    
+ 
 
-def get_data_train():  #https://scikit-learn.org/stable/model_persistence.html
+def load_train():  #https://scikit-learn.org/stable/model_persistence.html
     # Your Python script goes here
     from sklearn import svm
-    from sklearn import datasets
     from joblib import dump, load
     clf = svm.SVC()
-    iris = datasets.load_iris()
-    X, y = iris.data, iris.target
-    clf.fit(X, y)
+    df_train=pd.read_csv('/opt/airflow/files/df_train.csv') #skipcols=usecols=[1,:]
+    X_train=df_train.iloc[:,0:3].to_numpy()
+    y_train=df_train.iloc[:,4].to_numpy()
+    clf.fit(X_train, y_train)
     dump(clf, '/opt/airflow/files/filename.joblib') 
     # iris = datasets.load_iris()
     # df = pd.DataFrame.from_dict(iris, orient='index')
@@ -54,14 +72,15 @@ def load_test():
     # pickle_file = '/opt/airflow/files/pickle_data.joblib'
     # with open(pickle_file, 'rb') as f:
     #     load(f)
-    
+    import pandas as pd
+    import numpy as np
     from sklearn import svm
-    from sklearn import datasets
     from joblib import dump, load
     clf2 = load('/opt/airflow/files/filename.joblib')
-    iris = datasets.load_iris()
-    X, y = iris.data, iris.target
-    predict = clf2.predict(X[0:1])
+    df_test=pd.read_csv('/opt/airflow/files//df_test.csv') 
+    X_test=df_test.iloc[:,0:3].to_numpy()
+    y_test=df_test.iloc[:,4].to_numpy()
+    predict = clf2.predict(X_test)
     df = pd.DataFrame(predict)
     df.to_csv('/opt/airflow/files/predict.csv', index=False)
     # f = open("/opt/airflow/files/predict.csv", "a")
@@ -77,7 +96,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=1),
 }
 
 
@@ -88,9 +107,15 @@ joblib_skilearn = DAG(
     schedule_interval=timedelta(days=1),
 )
 
+get_data = PythonOperator(
+    task_id='get_data',
+    python_callable=get_data, #написать функцию
+    dag=joblib_skilearn,
+)
+
 fit_model = PythonOperator(
     task_id='fit_model',
-    python_callable=get_data_train, #написать функцию
+    python_callable=load_train, #написать функцию
     dag=joblib_skilearn,
 )
 
@@ -100,4 +125,4 @@ test_model = PythonOperator(
     dag=joblib_skilearn,
 )
 
-fit_model >> test_model
+get_data >> fit_model >> test_model
