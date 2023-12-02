@@ -7,3 +7,7 @@ python -m venv .venv --prompt x1
 
 docker:
  sudo service --status-all  #статус контейнеров
+
+ git add .
+ git commit -m 'генерация'
+ git push
